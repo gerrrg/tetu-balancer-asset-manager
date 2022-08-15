@@ -306,8 +306,8 @@ abstract contract AssetManagerBase is IAssetManagerBase {
   }
 
   function _rebalance() internal {
-    /// GERG: not that it's a huge deal, but why have the next two lines when you could simply put _getAUM() as
-    ///       the argument for _getPoolBalances() like you do in above in rebalance()? aum isn't used anywhere else
+    /// GERG: not that it's a huge deal, but why have the next two lines when you could simply do 
+    ///       _getPoolBalances(_getAUM()) as like you do above in rebalance()? aum isn't used anywhere else
     ///       in this function
     uint256 aum = _getAUM();
     (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
