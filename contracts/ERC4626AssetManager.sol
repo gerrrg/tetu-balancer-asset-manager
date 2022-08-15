@@ -75,6 +75,9 @@ contract ERC4626AssetManager is AssetManagerBase {
    */
   function _invest(uint256 amount, uint256) internal override returns (uint256) {
     uint256 balance = underlying.balanceOf(address(this));
+    /// GERG: this block here will sweep tokens sent directly to the AM, but will make a deposit
+    ///       that overshoots the target if there are extra tokens. Are we fine with this? Should
+    ///       there be a check?
     if (amount < balance) {
       balance = amount;
     }
@@ -82,6 +85,10 @@ contract ERC4626AssetManager is AssetManagerBase {
     // invest to ERC4626 Vault
     IERC4626(erc4626Vault).deposit(balance, address(this));
     uint256 shares = IERC20(erc4626Vault).balanceOf(address(this));
+    /// GERG: isn't the below check only doing what it says if it's the first deposit? 
+    ///       If you're issuing deposit #2 and it fails, wouldn't this require still 
+    ///       succeed since it has some shares from deposit #1?
+    ///       --> Looks like this delta check is properly done in _divest()
     require(shares > 0, "AM should receive shares after the deposit");
     emit Invested(balance);
     return balance;
@@ -92,6 +99,7 @@ contract ERC4626AssetManager is AssetManagerBase {
    * @param amountUnderlying - the amount to withdraw
    * @return the number of tokens to return to the balancerVault
    */
+   ///GERG: why drop the 2nd argument? 
   function _divest(uint256 amountUnderlying, uint256) internal override returns (uint256) {
     amountUnderlying = Math.min(amountUnderlying, IERC4626(erc4626Vault).maxWithdraw(address(this)));
     uint256 existingBalance = underlying.balanceOf(address(this));

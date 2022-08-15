@@ -28,7 +28,7 @@ abstract contract AssetManagerBase is IAssetManagerBase {
   IERC20 public immutable underlying;
 
   /// @dev RewardsAssetManager manages a single Pool, to which it allocates all rewards that it receives.
-  bytes32 public poolId;
+  bytes32 public poolId; /// GERG: why isn't poolId immutable?
   InvestmentConfig internal _config;
 
   // ***************************************************
@@ -58,6 +58,7 @@ abstract contract AssetManagerBase is IAssetManagerBase {
   /// @param pId - the id of the pool
   /// @notice We need to provide AM during pool creation but AM should know the PoolID.
   ///   To resolve this cyclic reference we need to have a separate method to store poolId
+  /// GERG: this initialization seems to be the only place that passing a poolId argument (to set it as a member variable) is relevant
   function initialize(bytes32 pId) external override {
     require(poolId == bytes32(0), "Already initialised");
     require(pId != bytes32(0), "Pool id cannot be empty");
@@ -85,6 +86,12 @@ abstract contract AssetManagerBase is IAssetManagerBase {
   }
 
   /// @dev Reverts if called with incorrect poolId.
+  /// GERG: is this necessary?
+  /// https://github.com/balancer-labs/balancer-v2-monorepo/blob/master/pkg/vault/contracts/AssetManagers.sol#L58
+  /// why not check for Errors.SENDER_NOT_ASSET_MANAGER?
+
+  /// GERG: further, each time a function uses the withCorrectPool modifier, it's checking that pId == poolId. Why bother
+  ///       accepting pId as an argument at all? Why not just always use poolId? (And as noted above, declare it as immutable)
   modifier withCorrectPool(bytes32 pId) {
     require(pId == poolId, "AssetManager called with incorrect poolId");
     _;
@@ -123,7 +130,7 @@ abstract contract AssetManagerBase is IAssetManagerBase {
     external
     view
     override
-    withCorrectPool(pId)
+    withCorrectPool(pId) ///GERG: why is the pId argument relevant?
     returns (InvestmentConfig memory)
   {
     return _config;
@@ -135,7 +142,7 @@ abstract contract AssetManagerBase is IAssetManagerBase {
     external
     view
     override
-    withCorrectPool(pId)
+    withCorrectPool(pId) ///GERG: why is the pId argument relevant?
     returns (uint256 poolCash, uint256 poolManaged)
   {
     (poolCash, poolManaged) = _getPoolBalances(_getAUM());
@@ -154,6 +161,7 @@ abstract contract AssetManagerBase is IAssetManagerBase {
     return investedPercentage > config.upperCriticalPercentage || investedPercentage < config.lowerCriticalPercentage;
   }
 
+  ///GERG: why is the pId argument relevant?
   /// @param pId - the poolId
   /// @notice shows amount of tokens under management by this AM (currently invested)
   function getAUM(bytes32 pId) external view override withCorrectPool(pId) returns (uint256) {
@@ -237,6 +245,7 @@ abstract contract AssetManagerBase is IAssetManagerBase {
     balancerVault.managePoolBalance(ops);
   }
 
+  /// GERG: why not define these virtual function at the top? 
   /**
    * @dev Invests capital inside the asset manager
    * @param amount - the amount of tokens being deposited
@@ -297,6 +306,9 @@ abstract contract AssetManagerBase is IAssetManagerBase {
   }
 
   function _rebalance() internal {
+    /// GERG: not that it's a huge deal, but why have the next two lines when you could simply put _getAUM() as
+    ///       the argument for _getPoolBalances() like you do in above in rebalance()? aum isn't used anywhere else
+    ///       in this function
     uint256 aum = _getAUM();
     (uint256 poolCash, uint256 poolManaged) = _getPoolBalances(aum);
     InvestmentConfig memory config = _config;
@@ -309,6 +321,9 @@ abstract contract AssetManagerBase is IAssetManagerBase {
     } else {
       // Pool is over-invested so remove some funds
       uint256 rebalanceAmount = poolManaged - targetInvestment;
+      /// GERG: is it worth skipping if rebalanceAmount == 0? 
+      ///   probability (rebalanceAmount == 0) * gas(_capitalOut())
+      ///   probability (rebalanceAmount != 0) * gas(if statement checking equality)
       _capitalOut(rebalanceAmount);
     }
 

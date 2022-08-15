@@ -219,7 +219,7 @@ describe("ERC4626AssetManager tests", function () {
       )
     })
 
-    it("Initialize can be call only once", async function () {
+    it("Initialize can be called only once", async function () {
       await expect(assetManager.initialize(poolId)).is.rejectedWith("Already initialised")
     })
 

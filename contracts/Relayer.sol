@@ -78,6 +78,8 @@ contract Relayer is IRelayer {
     IBVault.JoinPoolRequest memory request
   ) external rebalance(poolId, request.assets, new uint256[](request.assets.length)) {
     vault.joinPool(poolId, msg.sender, recipient, request);
+    /// GERG: would it make more sense to have the rebalance() call *after* this joinPool? That way, it would sure a
+    ///       more balanced allocation after new tokens have been added
   }
 
   /// @notice standard Balancer's vault exitPool request with the extra param minCashBalances.
@@ -91,7 +93,12 @@ contract Relayer is IRelayer {
     uint256[] memory minCashBalances
   ) external rebalance(poolId, request.assets, minCashBalances) {
     vault.exitPool(poolId, msg.sender, recipient, request);
+    /// GERG: what do you think about rebalancing again after the exit? Otherwise the pool would have zero tokens after, no?
   }
+
+  /// GERG: super happy to see that you've implemented a minCashBalance check on exitPool. I think it would also be great to
+  ///       implement a check/refill for this on the swap, though this would have to be implemented in TetuStablePool.sol. 
+  ///       Along that line of thought, why is _ensureCashBalance implemented in the relayer rather than the pool itself?
 
   // ***************************************************
   //                 REBALANCE
